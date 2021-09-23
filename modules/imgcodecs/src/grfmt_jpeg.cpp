@@ -247,6 +247,12 @@ bool  JpegDecoder::readHeader()
             jpeg_save_markers(&state->cinfo, APP1, 0xffff);
             jpeg_read_header( &state->cinfo, TRUE );
 
+            // set fast decoding
+            state->cinfo.do_fancy_upsampling = FALSE;
+            state->cinfo.do_block_smoothing = FALSE;
+            state->cinfo.dct_method = JDCT_FASTEST;
+            state->cinfo.dither_mode = JDITHER_NONE;
+
             state->cinfo.scale_num=1;
             state->cinfo.scale_denom = m_scale_denom;
             m_scale_denom=1; // trick! to know which decoder used scale_denom see imread_
