@@ -253,8 +253,48 @@ bool  JpegDecoder::readHeader()
             state->cinfo.dct_method = JDCT_FASTEST;
             state->cinfo.dither_mode = JDITHER_NONE;
 
-            state->cinfo.scale_num=1;
-            state->cinfo.scale_denom = m_scale_denom;
+            // scale down
+            jpeg_calc_output_dimensions(&state->cinfo);
+
+            const int nMaxImageLength = 1536;
+            const int nMinImageLength = 768;
+
+            int img_width = state->cinfo.output_width;
+            int img_height = state->cinfo.output_height;
+
+            auto& nImageShort = img_width < img_height ? img_width : img_height;
+            auto& nImageLong = img_width < img_height ? img_height : img_width;
+            if (nImageLong > nMaxImageLength)
+            {
+                nImageShort = nImageShort * nMaxImageLength / nImageLong;
+                nImageLong = nMaxImageLength;
+            }
+            if (nImageShort > nMinImageLength)
+            {
+                nImageLong = nImageLong * nMinImageLength / nImageShort;
+                nImageShort = nMinImageLength;
+            }
+
+            const double scaleX = static_cast<double>(img_width) / state->cinfo.output_width;
+            const double scaleY = static_cast<double>(img_height) / state->cinfo.output_height;
+            const double maxScale = scaleX > scaleY ? scaleX : scaleY;
+
+            if (maxScale < 0.5)
+            {
+                int count = 1;
+                while (static_cast<double>(count) / 8 < maxScale)
+                {
+                    count++;
+                }
+                state->cinfo.scale_num = count;
+                state->cinfo.scale_denom = 8;
+            }
+            else
+            {
+                state->cinfo.scale_num=1;
+                state->cinfo.scale_denom = m_scale_denom;
+            }
+
             m_scale_denom=1; // trick! to know which decoder used scale_denom see imread_
             jpeg_calc_output_dimensions(&state->cinfo);
             m_width = state->cinfo.output_width;
